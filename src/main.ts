@@ -42,14 +42,12 @@ world.registerSystem({
     positionable: { required: ["position", "graphics"] },
   },
   update: (elapsed: number, { world, queries }) => {
-    const entities = world.execute(queries.positionable);
+    const entities = world.execute(queries?.positionable!);
     for (const entity of entities) {
-      const components = world.components(entity);
-      const position = components.get("position")!.state as {
-        x: number;
-        y: number;
-      };
-      const graphics = components.get("graphics")!.state as PIXI.Graphics;
+      const [position, graphics] = world.select<[any, PIXI.Graphics]>(entity, [
+        "position",
+        "graphics",
+      ]);
       graphics.x = position.x;
       graphics.y = position.y;
 
@@ -65,10 +63,10 @@ world.registerSystem({
     positionable: { required: ["position"] },
   },
   update: (elapsed: number, { world, queries }) => {
-    const entities = world.execute(queries.positionable);
+    const entities = world.execute(queries?.positionable!);
     for (const entity of entities) {
       if (Math.random() * 10000 < 1 * elapsed) {
-        world.removeComponent(entity, ECS.c("position"));
+        world.removeComponent(entity, "position");
       }
     }
   },
