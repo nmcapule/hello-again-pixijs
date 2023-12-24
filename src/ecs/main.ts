@@ -9,8 +9,19 @@ export function c(name: string, state?: any): Component {
   return { name, state };
 }
 
+export interface Query {
+  required: string[];
+}
+
 export interface System {
-  update(elapsedMs: number);
+  queries?: { [key: string]: Query };
+  update(
+    elapsedMs: number,
+    extras: {
+      world: World;
+      queries: { [key: string]: Query };
+    }
+  );
 }
 
 interface WorldEntity {
@@ -21,54 +32,88 @@ interface WorldEntity {
 export class World {
   private systems: System[] = [];
   private entities = new Map<Entity, WorldEntity>();
-  private entityGenerator = 0;
+  private entityIdGenerator = 0;
+  private cachedSystemQueryResults = new Map<Query, Set<Entity>>();
 
+  instance(entity: Entity): WorldEntity {
+    return this.entities.get(entity)!;
+  }
   components(entity: Entity): Map<string, Component> {
-    return this.entities.get(entity)!.components;
+    return this.instance(entity).components;
   }
-  query(...components: Component[]): Entity[] {
-    // TODO: This is the naive implementation. Make faster by lookups.
-    const componentNames = components.map((c) => c.name);
-    const matches: Entity[] = [];
-    for (const [entity, instance] of this.entities.entries()) {
-      const instanceComponents = Array.from(instance.components.keys());
-      if (componentNames.every((name) => instanceComponents.includes(name))) {
-        matches.push(entity);
-      }
-    }
-    return matches;
+  execute(query: Query): Set<Entity> {
+    return this.cachedSystemQueryResults.get(query)!;
   }
+  // query(...componentNames: string[]): Entity[] {
+  //   const matches: Entity[] = [];
+  //   for (const [entity, instance] of this.entities.entries()) {
+  //     const instanceComponents = Array.from(instance.components.keys());
+  //     if (componentNames.every((name) => instanceComponents.includes(name))) {
+  //       matches.push(entity);
+  //     }
+  //   }
+  //   return matches;
+  // }
 
   spawn(entity: Entity | null, ...components: Component[]): Entity {
     if (entity === null) {
-      entity = ++this.entityGenerator;
+      entity = ++this.entityIdGenerator;
     }
     this.entities.set(entity, {
       entity,
       components: new Map<string, Component>(),
     });
-    for (const component of components) {
-      this.addComponent(entity, component);
-    }
+    components.forEach((component) => {
+      this.addComponent(entity!, component, false);
+    });
+    this.rebuildCachedSystemQueryResults(entity);
     return entity;
   }
   despawn(entity: Entity) {
     this.components(entity)?.forEach((component) =>
-      this.removeComponent(entity, component)
+      this.removeComponent(entity, component, false)
     );
+    this.rebuildCachedSystemQueryResults(entity);
     this.entities.delete(entity);
   }
-  addComponent(entity: Entity, component: Component) {
-    this.entities.get(entity)?.components.set(component.name, component);
-    // TODO: Rebuild lookup table.
+  addComponent(entity: Entity, component: Component, rebuildCache = true) {
+    this.components(entity).set(component.name, component);
+    if (rebuildCache) {
+      this.rebuildCachedSystemQueryResults(entity);
+    }
   }
-  removeComponent(entity: Entity, component: Component) {
-    this.entities.get(entity)?.components.delete(component.name);
-    // TODO: Rebuild lookup table.
+  removeComponent(entity: Entity, component: Component, rebuildCache = true) {
+    this.components(entity).delete(component.name);
+    if (rebuildCache) {
+      this.rebuildCachedSystemQueryResults(entity);
+    }
+  }
+
+  private queryMatches(query: Query, instance: WorldEntity) {
+    const instanceComponentNames = Array.from(instance.components.keys());
+    return query.required.every((componentName) =>
+      instanceComponentNames.includes(componentName)
+    );
+  }
+  private rebuildCachedSystemQueryResults(entity: Entity) {
+    this.cachedSystemQueryResults.forEach((cachedResults, query) => {
+      const match = this.queryMatches(query, this.instance(entity));
+      if (match) {
+        cachedResults.add(entity);
+      } else {
+        cachedResults.delete(entity);
+      }
+    });
   }
 
   registerSystem(system: System): World {
     this.systems.push(system);
+    const queries = system.queries;
+    if (queries) {
+      Object.values(queries).forEach((query) =>
+        this.cachedSystemQueryResults.set(query, new Set<Entity>())
+      );
+    }
     return this;
   }
 
@@ -76,7 +121,10 @@ export class World {
   private update(tick: number) {
     const elapsedMs = tick - this.prevTick;
     for (const system of this.systems) {
-      system.update(elapsedMs);
+      system.update(elapsedMs, {
+        world: this,
+        queries: system.queries,
+      });
     }
     this.prevTick = tick;
     window.requestAnimationFrame(this.update.bind(this));

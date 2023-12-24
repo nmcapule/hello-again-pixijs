@@ -37,23 +37,12 @@ function createPlaceholderGraphics(color: number) {
 }
 
 const world = new ECS.World();
-for (let i = 0; i < 100; i++) {
-  const graphics = createPlaceholderGraphics(0x000000);
-  world.spawn(
-    null,
-    ECS.c("position", { x: Math.random() * 800, y: Math.random() * 640 }),
-    ECS.c("name", `grunt#${i}`),
-    ECS.c("graphics", graphics)
-  );
-  app.stage.addChild(graphics);
-}
 world.registerSystem({
-  update: (elapsed: number) => {
-    const entities = world.query(
-      ECS.c("position"),
-      ECS.c("name"),
-      ECS.c("graphics")
-    );
+  queries: {
+    positionable: { required: ["position", "graphics"] },
+  },
+  update: (elapsed: number, { world, queries }) => {
+    const entities = world.execute(queries.positionable);
     for (const entity of entities) {
       const components = world.components(entity);
       const position = components.get("position")!.state as {
@@ -64,14 +53,37 @@ world.registerSystem({
       graphics.x = position.x;
       graphics.y = position.y;
 
-      position.x += (Math.random() - 0.5) * elapsed;
-      position.y += (Math.random() - 0.5) * elapsed;
+      position.x += ((Math.random() - 0.5) * elapsed) / 10;
+      position.y += ((Math.random() - 0.5) * elapsed) / 10;
       position.x = Math.min(Math.max(0, position.x), 800);
       position.y = Math.min(Math.max(0, position.y), 640);
     }
-    // console.log(elapsed, entities);
+  },
+});
+world.registerSystem({
+  queries: {
+    positionable: { required: ["position"] },
+  },
+  update: (elapsed: number, { world, queries }) => {
+    const entities = world.execute(queries.positionable);
+    for (const entity of entities) {
+      if (Math.random() * 10000 < 1 * elapsed) {
+        world.removeComponent(entity, ECS.c("position"));
+      }
+    }
   },
 });
 world.run();
+
+for (let i = 0; i < 10000; i++) {
+  const graphics = createPlaceholderGraphics(Math.random() * 0xffffff);
+  world.spawn(
+    null,
+    ECS.c("position", { x: Math.random() * 800, y: Math.random() * 640 }),
+    ECS.c("name", `grunt#${i}`),
+    ECS.c("graphics", graphics)
+  );
+  app.stage.addChild(graphics);
+}
 
 document.body.appendChild(app.view as any);
