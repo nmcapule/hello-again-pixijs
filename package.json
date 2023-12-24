@@ -1,0 +1,17 @@
+{
+  "name": "hello-again-pixijs",
+  "version": "0.0.1",
+  "main": "index.js",
+  "license": "MIT",
+  "source": "src/index.html",
+  "scripts": {
+    "start": "parcel -p 8080",
+    "build": "parcel build"
+  },
+  "devDependencies": {
+    "parcel": "^2.10.3"
+  },
+  "dependencies": {
+    "pixi.js": "^7.3.2"
+  }
+}
