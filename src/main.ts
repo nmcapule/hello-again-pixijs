@@ -67,7 +67,10 @@ world.register(
 world.register(
   new ECS.System({
     queries: {
-      positionable: new ECS.Query(["position", "graphics"]),
+      positionable: new ECS.Query<[{ x: number; y: number }, PIXI.Graphics]>([
+        "position",
+        "graphics",
+      ]),
     },
     updateProxy: (self) => (world: ECS.World, elapsed: number) => {
       const query = self.queries.positionable;
@@ -86,12 +89,11 @@ world.register(
       for (let i = 1; i < numberToClone; i++) {
         const index = Math.floor(Math.random() * entities.length);
         const entity = entities[index];
-        const [position, graphics, name] = query.select(world, entity);
+        const [position, graphics] = query.select(world, entity);
         const clonedGraphics = graphics.state.clone();
         world.spawn(
           null,
           new ECS.Component("position", { ...position.state }),
-          new ECS.Component("name", `cloned ${name?.state}`),
           new ECS.Component("graphics", clonedGraphics, {
             doneProxy: (self) => () => clonedGraphics.removeFromParent(),
           })

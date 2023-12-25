@@ -1,6 +1,6 @@
 export type Entity = number;
 
-export class Component<T = any> {
+export class Component<T extends unknown = any> {
   done?: () => void;
 
   constructor(
@@ -12,15 +12,21 @@ export class Component<T = any> {
   }
 }
 
-export class Query<C extends any[] = any[]> {
+export class Query<T extends unknown[] = unknown[]> {
   constructor(readonly required: string[]) {}
 
   execute(world: World): Set<Entity> {
     return world.execute(this);
   }
-  select(world: World, entity: Entity): Component[] {
+  select(world: World, entity: Entity) {
     const components = world.components(entity);
-    return this.required.map((componentName) => components.get(componentName)!);
+    const values = this.required.map(
+      (componentName, i) => components.get(componentName)!
+    ) as {
+      // Thank you https://stackoverflow.com/a/64774250 -- wizardry!
+      [Index in keyof T]: Component<T[Index]>;
+    };
+    return values;
   }
 }
 
