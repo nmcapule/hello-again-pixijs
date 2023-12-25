@@ -1,40 +1,63 @@
 export type Entity = number;
 
-export interface Component {
-  name: string;
-  state: any;
+export class Component<T = any> {
   done?: () => void;
+
+  constructor(
+    readonly name: string,
+    public state: T,
+    opts?: { doneProxy: (self: Component<T>) => () => void }
+  ) {
+    if (opts?.doneProxy) this.done = opts.doneProxy(this);
+  }
 }
 
-export function c(name: string, state?: any, done?: () => void): Component {
-  return { name, state, done };
+export class Query<C extends any[] = any[]> {
+  constructor(readonly required: string[]) {}
+
+  execute(world: World): Set<Entity> {
+    return world.execute(this);
+  }
+  select(world: World, entity: Entity): Component[] {
+    const components = world.components(entity);
+    return this.required.map((componentName) => components.get(componentName)!);
+  }
 }
 
-export interface Query {
-  required: string[];
-}
+export class System<
+  QueryMap extends Record<string, Query> = Record<string, Query>
+> {
+  readonly queries: QueryMap;
 
-export interface System {
-  queries?: { [key: string]: Query };
-  update(
-    elapsedMs: number,
-    extras: {
-      world: World;
-      queries?: { [key: string]: Query };
-    }
-  );
+  init?: (world: World) => void;
+  done?: (world: World) => void;
+  update: (world: World, elapsedMs: number) => void;
+
+  constructor(args: {
+    queries: QueryMap;
+    updateProxy: (
+      self: System<QueryMap>
+    ) => (world: World, elapsedMs: number) => void;
+    initProxy?: (self: System<QueryMap>) => (world: World) => void;
+    doneProxy?: (self: System<QueryMap>) => (world: World) => void;
+  }) {
+    this.queries = args.queries;
+    this.update = args.updateProxy(this);
+    if (args.initProxy) this.init = args.initProxy(this);
+    if (args.doneProxy) this.done = args.doneProxy(this);
+  }
 }
 
 export class World {
   private systems: System[] = [];
+
+  private entityIdGenerator = 0;
   private entities = new Set<Entity>();
   private entityComponents = new Map<Entity, Map<string, Component>>();
-  private entityIdGenerator = 0;
-  private cachedSystemQueryResults = new Map<Query, Set<Entity>>();
+  private cachedQueryEntities = new Map<Query, Set<Entity>>();
 
   public commandsQueue: Array<() => void> = [];
-  // private markForRemoveEntity = new Set<Entity>();
-  private markForRebuildCachedSystemQuery = new Set<Entity>();
+  private markForRebuildCached = new Set<Entity>();
 
   components(entity): Map<string, Component> {
     return this.entityComponents.get(entity)!;
@@ -44,7 +67,7 @@ export class World {
     return componentNames.map((name) => components?.get(name)?.state) as T;
   }
   execute(query: Query): Set<Entity> {
-    return this.cachedSystemQueryResults.get(query)!;
+    return this.cachedQueryEntities.get(query)!;
   }
 
   spawn(entity: Entity | null, ...components: Component[]): Entity {
@@ -55,7 +78,7 @@ export class World {
       this.entities.add(entity!);
       this.entityComponents.set(entity!, new Map<string, Component>());
       components.forEach((component) => this.addComponent(entity!, component));
-      this.markForRebuildCachedSystemQuery.add(entity!);
+      this.markForRebuildCached.add(entity!);
     });
     return entity;
   }
@@ -64,13 +87,13 @@ export class World {
       this.components(entity)?.forEach((component) =>
         this.removeComponent(entity, component.name)
       );
-      this.markForRebuildCachedSystemQuery.add(entity);
+      this.markForRebuildCached.add(entity);
       this.entities.delete(entity);
     });
   }
   addComponent(entity: Entity, component: Component) {
     this.components(entity)?.set(component.name, component);
-    this.markForRebuildCachedSystemQuery.add(entity);
+    this.markForRebuildCached.add(entity);
   }
   removeComponent(entity: Entity, componentName: string) {
     const component = this.components(entity)?.get(componentName);
@@ -79,7 +102,7 @@ export class World {
     }
 
     this.components(entity)?.delete(componentName);
-    this.markForRebuildCachedSystemQuery.add(entity);
+    this.markForRebuildCached.add(entity);
   }
 
   private queryMatches(query: Query, components: Map<string, Component>) {
@@ -88,8 +111,9 @@ export class World {
       instanceComponentNames.includes(componentName)
     );
   }
-  private rebuildCacheForEntity(entity: Entity) {
-    this.cachedSystemQueryResults.forEach((cachedResults, query) => {
+
+  private rebuildCachedQueryEntities(entity: Entity) {
+    this.cachedQueryEntities.forEach((cachedResults, query) => {
       const match = this.queryMatches(query, this.components(entity));
       if (match) {
         cachedResults.add(entity);
@@ -100,11 +124,14 @@ export class World {
   }
 
   register(system: System): World {
+    if (system.init) {
+      system.init(this);
+    }
     this.systems.push(system);
     const queries = system.queries;
     if (queries) {
       Object.values(queries).forEach((query) =>
-        this.cachedSystemQueryResults.set(query, new Set<Entity>())
+        this.cachedQueryEntities.set(query, new Set<Entity>())
       );
     }
     return this;
@@ -119,17 +146,14 @@ export class World {
     this.commandsQueue = [];
 
     // Iterate thru all entities mark for rebuilding the cache.
-    this.markForRebuildCachedSystemQuery.forEach((entity) =>
-      this.rebuildCacheForEntity(entity)
+    this.markForRebuildCached.forEach((entity) =>
+      this.rebuildCachedQueryEntities(entity)
     );
-    this.markForRebuildCachedSystemQuery.clear();
+    this.markForRebuildCached.clear();
 
     // Execute all the systems.
     for (const system of this.systems) {
-      system.update(elapsedMs, {
-        world: this,
-        queries: system.queries,
-      });
+      system.update(this, elapsedMs);
     }
     this.prevTick = tick;
 
