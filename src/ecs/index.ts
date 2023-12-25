@@ -201,6 +201,7 @@ export class World {
 
   run() {
     this.update(0);
+    return this;
   }
 }
 

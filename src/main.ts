@@ -45,66 +45,61 @@ const QUERIES = {
     "graphics",
   ]),
 };
+const sporadicMovementSystem = ECS.s((world: ECS.World, elapsed: number) => {
+  const query = QUERIES.spatial;
+  for (const [_, [position, graphics]] of query.execute(world)) {
+    graphics.state.x = position.state.x;
+    graphics.state.y = position.state.y;
 
-const world = new ECS.World();
-world.prepare(QUERIES.spatial);
-world.register(
-  ECS.s((world: ECS.World, elapsed: number) => {
-    const query = QUERIES.spatial;
-    for (const [_, [position, graphics]] of query.execute(world)) {
-      graphics.state.x = position.state.x;
-      graphics.state.y = position.state.y;
+    position.state.x += ((Math.random() - 0.5) * elapsed) / 10;
+    position.state.y += ((Math.random() - 0.5) * elapsed) / 10;
+    position.state.x = Math.min(Math.max(0, position.state.x), 800);
+    position.state.y = Math.min(Math.max(0, position.state.y), 640);
+  }
+});
+const spawnDespawnSystem = ECS.s((world: ECS.World, elapsed: number) => {
+  const targetPopulation = 10000;
+  const query = QUERIES.spatial;
 
-      position.state.x += ((Math.random() - 0.5) * elapsed) / 10;
-      position.state.y += ((Math.random() - 0.5) * elapsed) / 10;
-      position.state.x = Math.min(Math.max(0, position.state.x), 800);
-      position.state.y = Math.min(Math.max(0, position.state.y), 640);
-    }
-  })
-);
+  const matches = query.execute(world);
+  if (matches.length === 0) {
+    return;
+  }
 
-world.register(
-  ECS.s((world: ECS.World, elapsed: number) => {
-    const query = QUERIES.spatial;
+  // Calculate percentage of cloning!
+  const numberToClone =
+    (Math.random() * elapsed * targetPopulation) / matches.length;
+  // Sample entities.
+  for (let i = 1; i < numberToClone; i++) {
+    const index = Math.floor(Math.random() * matches.length);
+    const [_, [position, graphics]] = matches[index];
+    const clonedGraphics = graphics.state.clone();
+    world.spawn(
+      null,
+      ECS.c("position", { ...position.state }),
+      ECS.c("graphics", clonedGraphics, {
+        init: () => app.stage.addChild(clonedGraphics),
+        done: () => clonedGraphics.removeFromParent(),
+      })
+    );
+    app.stage.addChild(clonedGraphics);
+  }
 
-    const matches = query.execute(world);
-    if (matches.length === 0) {
-      return;
-    }
+  // Calculate percentage of despawning!
+  const numberToDespawn =
+    (Math.random() * elapsed * matches.length) / targetPopulation;
+  for (let i = 1; i < numberToDespawn; i++) {
+    const index = Math.floor(Math.random() * matches.length);
+    const [entity] = matches[index];
+    world.despawn(entity);
+  }
+});
 
-    const targetPopulation = 10000;
-
-    // Calculate percentage of cloning!
-    const numberToClone =
-      (Math.random() * elapsed * targetPopulation) / matches.length;
-    // Sample entities.
-    for (let i = 1; i < numberToClone; i++) {
-      const index = Math.floor(Math.random() * matches.length);
-      const [_, [position, graphics]] = matches[index];
-      const clonedGraphics = graphics.state.clone();
-      world.spawn(
-        null,
-        ECS.c("position", { ...position.state }),
-        ECS.c("graphics", clonedGraphics, {
-          init: () => app.stage.addChild(clonedGraphics),
-          done: () => clonedGraphics.removeFromParent(),
-        })
-      );
-      app.stage.addChild(clonedGraphics);
-    }
-
-    // Calculate percentage of despawning!
-    const numberToDespawn =
-      (Math.random() * elapsed * matches.length) / targetPopulation;
-    for (let i = 1; i < numberToDespawn; i++) {
-      const index = Math.floor(Math.random() * matches.length);
-      const [entity] = matches[index];
-      world.despawn(entity);
-    }
-  })
-);
-
-world.run();
+const world = new ECS.World()
+  .prepare(QUERIES.spatial)
+  .register(sporadicMovementSystem)
+  .register(spawnDespawnSystem)
+  .run();
 
 for (let i = 0; i < 10; i++) {
   const graphics = createPlaceholderGraphics(Math.random() * 0xffffff);
