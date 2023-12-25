@@ -1,7 +1,6 @@
 {
   "name": "hello-again-pixijs",
   "version": "0.0.1",
-  "main": "index.js",
   "license": "MIT",
   "source": "src/index.html",
   "scripts": {
