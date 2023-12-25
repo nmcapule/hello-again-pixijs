@@ -32,12 +32,13 @@ const app = new PIXI.Application({
 function createPlaceholderGraphics(color: number) {
   const playerGraphics = new PIXI.Graphics();
   playerGraphics.beginFill(color);
-  playerGraphics.drawRect(-8, -8, 16, 16);
+  playerGraphics.drawCircle(0, 0, 4);
+  // playerGraphics.drawRect(-8, -8, 16, 16);
   return playerGraphics;
 }
 
 const world = new ECS.World();
-world.registerSystem({
+world.register({
   queries: {
     positionable: { required: ["position", "graphics"] },
   },
@@ -58,16 +59,46 @@ world.registerSystem({
     }
   },
 });
-world.registerSystem({
+world.register({
   queries: {
-    positionable: { required: ["position"] },
+    positionable: { required: ["position", "graphics"] },
   },
   update: (elapsed: number, { world, queries }) => {
-    const entities = world.execute(queries?.positionable!);
-    for (const entity of entities) {
-      if (Math.random() * 10000 < 1 * elapsed) {
-        world.removeComponent(entity, "position");
-      }
+    const entities = Array.from(world.execute(queries?.positionable!));
+
+    if (entities.length === 0) {
+      return;
+    }
+    const targetPopulation = 1000;
+
+    // Calculate percentage of cloning!
+    const numberToClone =
+      (Math.random() * elapsed * targetPopulation) / entities.length;
+    // Sample entities.
+    for (let i = 1; i < numberToClone; i++) {
+      const index = Math.floor(Math.random() * entities.length);
+      const entity = entities[index];
+      const [position, graphics, name] = world.select<
+        [any, PIXI.Graphics, string]
+      >(entity, ["position", "graphics", "name"]);
+      const clonedGraphics = graphics.clone();
+      world.spawn(
+        null,
+        ECS.c("position", { ...position }),
+        ECS.c("name", `cloned ${name}`),
+        ECS.c("graphics", clonedGraphics, () =>
+          clonedGraphics.removeFromParent()
+        )
+      );
+      app.stage.addChild(graphics);
+    }
+
+    // Calculate percentage of despawning!
+    const numberToDespawn =
+      (Math.random() * elapsed * entities.length) / targetPopulation;
+    for (let i = 1; i < numberToDespawn; i++) {
+      const index = Math.floor(Math.random() * entities.length);
+      world.despawn(entities[index]);
     }
   },
 });
@@ -79,7 +110,7 @@ for (let i = 0; i < 10000; i++) {
     null,
     ECS.c("position", { x: Math.random() * 800, y: Math.random() * 640 }),
     ECS.c("name", `grunt#${i}`),
-    ECS.c("graphics", graphics)
+    ECS.c("graphics", graphics, () => graphics.removeFromParent())
   );
   app.stage.addChild(graphics);
 }
