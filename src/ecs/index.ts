@@ -1,44 +1,27 @@
 export type Entity = number;
 
-export class Component<T extends unknown = any> {
-  init?: () => void;
-  done?: () => void;
-
+export abstract class Component<T extends any = any> {
   constructor(
-    readonly name: string,
-    public state: T,
-    opts?: {
-      init: () => void;
-      done: () => void;
-    }
-  ) {
-    this.init = opts?.init;
-    this.done = opts?.done;
-  }
+    readonly state: T,
+    readonly init?: () => void,
+    readonly done?: () => void
+  ) {}
 
-  static make<T>(
-    name: string,
-    state: T,
-    opts?: { init: () => void; done: () => void }
-  ) {
-    return new Component<T>(name, state, opts);
+  get name() {
+    return this.constructor.name;
   }
 }
 
-export class Query<T extends unknown[] = unknown[]> {
-  constructor(readonly required: string[]) {}
-  static make<T extends unknown[]>(required: string[]) {
-    return new Query<T>(required);
-  }
+export class Query<
+  const T extends (typeof Component<unknown>)[] = (typeof Component<unknown>)[],
+  const C = { [Index in keyof T]: InstanceType<T[Index]> }
+> {
+  constructor(readonly required: T) {}
 
   execute(world: World) {
     const entities = this.find(world);
     return Array.from(entities).map(
-      (entity) =>
-        [entity, this.components(world, entity)] as [
-          Entity,
-          { [Index in keyof T]: Component<T[Index]> }
-        ]
+      (entity) => [entity, this.components(world, entity)] as [Entity, C]
     );
   }
   find(world: World): Set<Entity> {
@@ -47,44 +30,25 @@ export class Query<T extends unknown[] = unknown[]> {
   findOne(world: World): Entity {
     return world.execute(this).values().next().value;
   }
-  components(world: World, entity: Entity) {
+  components(world: World, entity: Entity): C {
     const components = world.components(entity);
-    const values = this.required.map(
-      (componentName, _) => components.get(componentName)!
-      // Thank you https://stackoverflow.com/a/64774250 -- wizardry!
-    ) as { [Index in keyof T]: Component<T[Index]> };
-    return values;
+    const values = this.required
+      .map((component) => component.name)
+      .map((componentName, _) => components.get(componentName)!);
+    return values as unknown as C;
   }
 
   matches(componentNames: Set<string>) {
-    return this.required.every((componentName) =>
-      componentNames.has(componentName)
-    );
+    return this.required
+      .map((component) => component.name)
+      .every((componentName) => componentNames.has(componentName));
   }
 }
 
-export class System<
-  QueryMap extends Record<string, Query> = Record<string, Query>
-> {
-  init?: (world: World) => void;
-  done?: (world: World) => void;
-  update: (world: World, elapsedMs: number) => void;
-
-  constructor(args: {
-    updateProxy: (
-      self: System<QueryMap>
-    ) => (world: World, elapsedMs: number) => void;
-    initProxy?: (self: System<QueryMap>) => (world: World) => void;
-    doneProxy?: (self: System<QueryMap>) => (world: World) => void;
-  }) {
-    this.update = args.updateProxy(this);
-    if (args.initProxy) this.init = args.initProxy(this);
-    if (args.doneProxy) this.done = args.doneProxy(this);
-  }
-
-  static make(update: (world: World, elapsedMs: number) => void) {
-    return new System({ updateProxy: (self) => update });
-  }
+export abstract class System {
+  init(world: World) {}
+  done(world: World) {}
+  update(world: World, elapsedMs: number): void {}
 }
 
 export class World {
@@ -105,14 +69,12 @@ export class World {
     const components = this.components(entity);
     return componentNames.map((name) => components?.get(name)?.state) as T;
   }
-  execute(query: Query): Set<Entity> {
+  execute(query: Query<any, any>): Set<Entity> {
     return this.cachedQueryEntities.get(query) || new Set();
   }
 
-  spawn(entity: Entity | null, ...components: Component[]): Entity {
-    if (entity === null) {
-      entity = ++this.entityIdGenerator;
-    }
+  spawn(...components: Component[]): Entity {
+    const entity = ++this.entityIdGenerator;
     this.commandsQueue.push(() => {
       this.entities.add(entity!);
       this.entityComponents.set(entity!, new Map<string, Component>());
@@ -204,7 +166,3 @@ export class World {
     return this;
   }
 }
-
-export const s = System.make;
-export const c = Component.make;
-export const q = Query.make;
