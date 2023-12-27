@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import * as ECS from "./ecs";
+import * as ECS from "../ecs";
 import * as components from "./components";
 
 export const Spatial = new ECS.Query([
@@ -54,11 +54,7 @@ export class SpawnDespawnSystem extends ECS.System {
       const clonedGraphics = graphics.state.clone();
       world.spawn(
         new components.Position({ ...position.state }),
-        new components.Graphics(
-          clonedGraphics,
-          () => this.stage.addChild(clonedGraphics),
-          () => clonedGraphics.removeFromParent()
-        )
+        new components.Graphics(clonedGraphics, this.stage)
       );
       this.stage.addChild(clonedGraphics);
     }

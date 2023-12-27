@@ -12,8 +12,10 @@ export abstract class Component<T extends any = any> {
   }
 }
 
+type ComponentConstructor<T = unknown> = new (...args: any) => Component<T>;
+
 export class Query<
-  const T extends (typeof Component<unknown>)[] = (typeof Component<unknown>)[],
+  const T extends ComponentConstructor[] = ComponentConstructor[],
   const C = { [Index in keyof T]: InstanceType<T[Index]> }
 > {
   constructor(readonly required: T) {}
@@ -132,6 +134,7 @@ export class World {
     this.cachedQueryEntities.set(query, new Set<Entity>());
     return this;
   }
+
   register(system: System): World {
     if (system.init) {
       system.init(this);
@@ -142,6 +145,11 @@ export class World {
       }
     }
     this.systems.push(system);
+    return this;
+  }
+
+  once(callback: (world: World) => void): World {
+    callback(this);
     return this;
   }
 
