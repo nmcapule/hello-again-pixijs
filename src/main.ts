@@ -66,9 +66,11 @@ const spawnDespawnSystem = ECS.s((world: ECS.World, elapsed: number) => {
     return;
   }
 
+  const control = Math.max(elapsed, 100);
+
   // Calculate percentage of cloning!
   const numberToClone =
-    (Math.random() * elapsed * targetPopulation) / matches.length;
+    (Math.random() * control * targetPopulation) / matches.length;
   // Sample entities.
   for (let i = 1; i < numberToClone; i++) {
     const index = Math.floor(Math.random() * matches.length);
@@ -87,12 +89,16 @@ const spawnDespawnSystem = ECS.s((world: ECS.World, elapsed: number) => {
 
   // Calculate percentage of despawning!
   const numberToDespawn =
-    (Math.random() * elapsed * matches.length) / targetPopulation;
+    (Math.random() * control * matches.length) / targetPopulation;
   for (let i = 1; i < numberToDespawn; i++) {
     const index = Math.floor(Math.random() * matches.length);
     const [entity] = matches[index];
     world.despawn(entity);
   }
+
+  console.log(
+    `pop: ${matches.length} delta: +${numberToClone}, -${numberToDespawn}`
+  );
 });
 
 const world = new ECS.World()
@@ -101,7 +107,7 @@ const world = new ECS.World()
   .register(spawnDespawnSystem)
   .run();
 
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 1000; i++) {
   const graphics = createPlaceholderGraphics(Math.random() * 0xffffff);
   world.spawn(
     null,
