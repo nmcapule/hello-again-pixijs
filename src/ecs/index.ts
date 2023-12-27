@@ -1,5 +1,7 @@
+/** An ECS entity type alias. The id is generated when spawned in a world. */
 export type Entity = number;
 
+/** An ECS component. Inherit this class to create a valid component. */
 export abstract class Component<T extends any = any> {
   constructor(
     readonly state: T,
@@ -12,8 +14,10 @@ export abstract class Component<T extends any = any> {
   }
 }
 
+/** A helper type alias as an alternative to `typeof Component<unknown>`. */
 type ComponentConstructor<T = unknown> = new (...args: any) => Component<T>;
 
+/** An ECS query. */
 export class Query<
   const T extends ComponentConstructor[] = ComponentConstructor[],
   const C = { [Index in keyof T]: InstanceType<T[Index]> }
