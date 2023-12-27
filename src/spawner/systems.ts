@@ -127,19 +127,38 @@ export class CollisionDetectSystem extends ECS.System {
   update(world: ECS.World, _: number) {
     const query = this.queries.SpatialAndNamed;
     const entitySet = query.execute(world);
-    for (const [a, [positionA, nameA]] of entitySet) {
-      for (const [b, [positionB, nameB]] of entitySet) {
-        if (a === b) {
-          continue;
-        }
 
+    const sorted = entitySet.sort(([_a, [posA]], [_b, [posB]]) => {
+      return posA.state.x - posB.state.x;
+    });
+
+    for (const [i, [a, [positionA, nameA]]] of sorted.entries()) {
+      // Look left
+      for (let j = i - 1; j >= 0; j--) {
+        const [b, [posB, nameB]] = sorted[j];
         const distance = Math.sqrt(
-          (positionA.state.x - positionB.state.x) ** 2 +
-            (positionA.state.y - positionB.state.y) ** 2
+          (positionA.state.x - posB.state.x) ** 2 +
+            (positionA.state.y - posB.state.y) ** 2
         );
         if (distance < this.collisionDistance && nameA.state !== nameB.state) {
           world.despawn(a);
           world.despawn(b);
+        } else {
+          break;
+        }
+      }
+      // Look right
+      for (let j = i + 1; j < sorted.length; j++) {
+        const [b, [posB, nameB]] = sorted[j];
+        const distance = Math.sqrt(
+          (positionA.state.x - posB.state.x) ** 2 +
+            (positionA.state.y - posB.state.y) ** 2
+        );
+        if (distance < this.collisionDistance && nameA.state !== nameB.state) {
+          world.despawn(a);
+          world.despawn(b);
+        } else {
+          break;
         }
       }
     }
