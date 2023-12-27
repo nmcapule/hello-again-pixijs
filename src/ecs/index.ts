@@ -18,24 +18,27 @@ export class Query<
 > {
   constructor(readonly required: T) {}
 
-  execute(world: World) {
-    const entities = this.find(world);
-    return Array.from(entities).map(
-      (entity) => [entity, this.components(world, entity)] as [Entity, C]
-    );
-  }
-  find(world: World): Set<Entity> {
-    return world.execute(this);
-  }
-  findOne(world: World): Entity {
-    return world.execute(this).values().next().value;
-  }
   components(world: World, entity: Entity): C {
     const components = world.components(entity);
     const values = this.required
       .map((component) => component.name)
       .map((componentName, _) => components.get(componentName)!);
     return values as unknown as C;
+  }
+
+  execute(world: World) {
+    const entities = this.find(world);
+    return Array.from(entities).map(
+      (entity) => [entity, this.components(world, entity)] as [Entity, C]
+    );
+  }
+
+  find(world: World): Set<Entity> {
+    return world.execute(this);
+  }
+
+  findOne(world: World): Entity {
+    return world.execute(this).values().next().value;
   }
 
   matches(componentNames: Set<string>) {
@@ -46,6 +49,8 @@ export class Query<
 }
 
 export abstract class System {
+  queries: Record<string, Query>;
+
   init(world: World) {}
   done(world: World) {}
   update(world: World, elapsedMs: number): void {}
@@ -130,6 +135,11 @@ export class World {
   register(system: System): World {
     if (system.init) {
       system.init(this);
+    }
+    if (system.queries) {
+      for (const [_, query] of Object.entries(system.queries)) {
+        this.prepare(query);
+      }
     }
     this.systems.push(system);
     return this;

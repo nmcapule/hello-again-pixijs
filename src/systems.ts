@@ -1,11 +1,19 @@
 import * as PIXI from "pixi.js";
 import * as ECS from "./ecs";
 import * as components from "./components";
-import * as queries from "./queries";
+
+export const Spatial = new ECS.Query([
+  components.Position,
+  components.Graphics,
+]);
 
 export class SporadicMovementSystem extends ECS.System {
+  queries = {
+    Spatial: new ECS.Query([components.Position, components.Graphics]),
+  };
+
   update(world: ECS.World, elapsed: number) {
-    const query = queries.Spatial;
+    const query = this.queries.Spatial;
     for (const [_, [position, graphics]] of query.execute(world)) {
       graphics.state.x = position.state.x;
       graphics.state.y = position.state.y;
@@ -19,14 +27,17 @@ export class SporadicMovementSystem extends ECS.System {
 }
 
 export class SpawnDespawnSystem extends ECS.System {
-  constructor(readonly stage: PIXI.Container) {
+  queries = { Spatial };
+
+  constructor(
+    readonly stage: PIXI.Container,
+    readonly targetPopulation = 1000
+  ) {
     super();
   }
-  update(world: ECS.World, elapsed: number) {
-    const targetPopulation = 1000;
-    const query = queries.Spatial;
 
-    const matches = query.execute(world);
+  update(world: ECS.World, elapsed: number) {
+    const matches = this.queries.Spatial.execute(world);
     if (matches.length === 0) {
       return;
     }
@@ -35,7 +46,7 @@ export class SpawnDespawnSystem extends ECS.System {
 
     // Calculate percentage of cloning!
     const numberToClone =
-      (Math.random() * control * targetPopulation) / matches.length;
+      (Math.random() * control * this.targetPopulation) / matches.length;
     // Sample entities.
     for (let i = 1; i < numberToClone; i++) {
       const index = Math.floor(Math.random() * matches.length);
@@ -54,7 +65,7 @@ export class SpawnDespawnSystem extends ECS.System {
 
     // Calculate percentage of despawning!
     const numberToDespawn =
-      (Math.random() * control * matches.length) / targetPopulation;
+      (Math.random() * control * matches.length) / this.targetPopulation;
     for (let i = 1; i < numberToDespawn; i++) {
       const index = Math.floor(Math.random() * matches.length);
       const [entity] = matches[index];

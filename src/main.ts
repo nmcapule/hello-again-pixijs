@@ -1,7 +1,6 @@
 import * as PIXI from "pixi.js";
 import * as ECS from "./ecs";
 import * as components from "./components";
-import * as queries from "./queries";
 import * as systems from "./systems";
 
 const app = new PIXI.Application({
@@ -11,9 +10,8 @@ const app = new PIXI.Application({
 });
 
 const world = new ECS.World()
-  .prepare(queries.Spatial)
   .register(new systems.SporadicMovementSystem())
-  .register(new systems.SpawnDespawnSystem(app.stage))
+  .register(new systems.SpawnDespawnSystem(app.stage, 10000))
   .run();
 
 function createPlaceholderGraphics(color: number) {
