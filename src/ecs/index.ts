@@ -159,6 +159,9 @@ export class World {
 
   private prevTick: number = 0;
   private update(tick: number) {
+    // Schedule for another execution!
+    window.requestAnimationFrame(this.update.bind(this));
+
     const elapsedMs = tick - this.prevTick;
 
     // Execute all commands in the queue.
@@ -178,9 +181,6 @@ export class World {
       system.update(this, elapsedMs);
     }
     this.prevTick = tick;
-
-    // Schedule for another execution!
-    window.requestAnimationFrame(this.update.bind(this));
   }
 
   run() {
