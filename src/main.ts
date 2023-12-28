@@ -8,19 +8,13 @@ const app = new PIXI.Application({
   height: 640,
 });
 
-class LoggerSystem extends ECS.System {
-  update(_, elapsed: number) {
-    console.log(`tick:`, elapsed);
-  }
-}
-
 new ECS.World()
-  .once(spawner.setupInitialEntities(app.stage, 1000))
+  .once(spawner.setupInitialEntities(app.stage, 100))
   .register(new spawner.SporadicMovementSystem())
   .register(new spawner.SpawnSystem(app.stage, 10000))
   // .register(new spawner.SpawnDespawnSystem(app.stage, 10))
   .register(new spawner.CollisionDetectSystem(4))
-  .register(new LoggerSystem())
+  .register(new spawner.EventLoggerSystem())
   .run();
 
 document.body.appendChild(app.view as any);

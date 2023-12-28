@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
 import * as ECS from "../ecs";
 import * as components from "./components";
+import * as events from "./events";
 
 const Spatial = new ECS.Query([components.Position, components.Graphics]);
 
@@ -157,10 +158,26 @@ export class CollisionDetectSystem extends ECS.System {
         if (distance < this.collisionDistance && nameA.state !== nameB.state) {
           world.despawn(a);
           world.despawn(b);
+          world.send(
+            new events.Log(
+              `despawned ${nameA.state}:${a} and ${nameB.state}:${b}`
+            )
+          );
         } else {
           break;
         }
       }
     }
+  }
+}
+
+export class EventLoggerSystem extends ECS.System {
+  queries = { Spatial };
+  listener = new ECS.SystemEventListener([events.Log]);
+
+  update(world: ECS.World) {
+    const [logs] = this.listener.events(world);
+    console.log(...logs.map((l) => l.data));
+    console.log("entities:", this.queries.Spatial.find(world).size);
   }
 }

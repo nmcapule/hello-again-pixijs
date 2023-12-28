@@ -22,13 +22,13 @@ export class Query<
   const T extends ComponentConstructor[] = ComponentConstructor[],
   const C = { [Index in keyof T]: InstanceType<T[Index]> }
 > {
-  constructor(readonly required: T) {}
+  constructor(readonly selectors: T) {}
 
   components(world: World, entity: Entity): C {
     const components = world.components(entity);
-    const values = this.required
-      .map((component) => component.name)
-      .map((componentName, _) => components.get(componentName)!);
+    const values = this.selectors
+      .map((selector) => selector.name)
+      .map((name, _) => components.get(name)!);
     return values as unknown as C;
   }
 
@@ -47,15 +47,40 @@ export class Query<
     return world.execute(this).values().next().value;
   }
 
-  matches(componentNames: Set<string>) {
-    return this.required
-      .map((component) => component.name)
-      .every((componentName) => componentNames.has(componentName));
+  matches(names: Set<string>) {
+    return this.selectors.every((component) => names.has(component.name));
+  }
+}
+
+/** An ECS system event. Inherit this class to create a valid system event. */
+export abstract class SystemEvent<T extends any = any> {
+  constructor(readonly data: T) {}
+  get name() {
+    return this.constructor.name;
+  }
+}
+
+/** A helper type alias as an alternative to `typeof SystemEvent<unknown>`. */
+type SystemEventConstructor<T = unknown> = new (...args: any) => SystemEvent<T>;
+
+export class SystemEventListener<
+  const T extends SystemEventConstructor[] = SystemEventConstructor[],
+  const C = { [Index in keyof T]: InstanceType<T[Index]>[] }
+> {
+  constructor(readonly selectors: T) {}
+
+  events(world: World): C {
+    return world.events(this as unknown as SystemEventListener) as C;
+  }
+
+  matches(names: Set<string>) {
+    return this.selectors.every((event) => names.has(event.name));
   }
 }
 
 export abstract class System {
   queries: Record<string, Query>;
+  listener: SystemEventListener;
 
   init(world: World) {}
   done(world: World) {}
@@ -70,18 +95,27 @@ export class World {
   private entityComponents = new Map<Entity, Map<string, Component>>();
   private cachedQueryEntities = new Map<Query, Set<Entity>>();
 
+  public eventsQueue = new Map<string, SystemEvent[]>();
   public commandsQueue: Array<() => void> = [];
   private markForReindex = new Set<Entity>();
 
   components(entity): Map<string, Component> {
     return this.entityComponents.get(entity)!;
   }
-  select<T>(entity: Entity, componentNames: string[]): T {
-    const components = this.components(entity);
-    return componentNames.map((name) => components?.get(name)?.state) as T;
-  }
   execute(query: Query<any, any>): Set<Entity> {
     return this.cachedQueryEntities.get(query) || new Set();
+  }
+  events(listener: SystemEventListener) {
+    return listener.selectors
+      .map((selector) => selector.name)
+      .map((name) => this.eventsQueue.get(name));
+  }
+  send(event: SystemEvent) {
+    this.commandsQueue.push(() => {
+      const queue = this.eventsQueue.get(event.name) || [];
+      queue.push(event);
+      this.eventsQueue.set(event.name, queue);
+    });
   }
 
   spawn(...components: Component[]): Entity {
@@ -178,9 +212,19 @@ export class World {
 
     // Execute all the systems.
     for (const system of this.systems) {
+      // If system has an event listener but no matching events, skip.
+      if (system.listener) {
+        const events = system.listener.events(this);
+        if (events.some((e) => !e || e.length === 0)) {
+          continue;
+        }
+      }
       system.update(this, elapsedMs);
     }
     this.prevTick = tick;
+
+    // Clear events.
+    this.eventsQueue.clear();
   }
 
   run() {
