@@ -41,7 +41,7 @@ new ECS.World()
     )
   )
   .register(new particlelife.GraphicsSystem())
-  .register(new particlelife.ParticleLifeSystem())
+  .register(new particlelife.ParticleLifeSystem(100))
   .register(new particlelife.MovementSystem(bounds))
   .run();
 

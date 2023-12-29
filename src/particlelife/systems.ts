@@ -61,6 +61,10 @@ export class ParticleLifeSystem extends ECS.System {
     ]),
   };
 
+  constructor(readonly simulationMultiplier: number = 100) {
+    super();
+  }
+
   private rule(
     aa: [ECS.Entity, [components.Position, components.Velocity, any]][],
     bb: [ECS.Entity, [components.Position, components.Velocity, any]][],
@@ -84,17 +88,19 @@ export class ParticleLifeSystem extends ECS.System {
     }
   }
 
-  update(world: ECS.World) {
+  update(world: ECS.World, elapsed: number) {
     const yellow = this.queries.Yellow.execute(world);
     const red = this.queries.Red.execute(world);
     const green = this.queries.Green.execute(world);
 
-    this.rule(green, green, -0.32);
-    this.rule(green, red, -0.17);
-    this.rule(green, yellow, 0.34);
-    this.rule(red, red, -0.1);
-    this.rule(red, green, -0.34);
-    this.rule(yellow, yellow, 0.15);
-    this.rule(yellow, green, -0.2);
+    const accel = (this.simulationMultiplier * elapsed) / 1000;
+
+    this.rule(green, green, -0.32 * accel);
+    this.rule(green, red, -0.17 * accel);
+    this.rule(green, yellow, 0.34 * accel);
+    this.rule(red, red, -0.1 * accel);
+    this.rule(red, green, -0.34 * accel);
+    this.rule(yellow, yellow, 0.15 * accel);
+    this.rule(yellow, green, -0.2 * accel);
   }
 }
