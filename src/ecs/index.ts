@@ -3,6 +3,9 @@ export type Entity = number;
 
 /** An ECS component. Inherit this class to create a valid component. */
 export abstract class Component<T extends any = any> {
+  // Attached to entity. Filled up by World when spawned.
+  id: Entity;
+
   constructor(
     readonly state: T,
     readonly init?: () => void,
@@ -151,6 +154,7 @@ export class World {
 
   attach(entity: Entity, component: Component) {
     this.components(entity)?.set(component.name, component);
+    component.id = entity;
     if (component.init) {
       component.init();
     }

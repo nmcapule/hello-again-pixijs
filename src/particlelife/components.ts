@@ -12,27 +12,18 @@ export class Graphics extends ECS.Component<PIXI.Graphics> {
 export class Position extends ECS.Component<{
   x: number;
   y: number;
-}> {}
+}> {
+  get x() {
+    return this.state.x;
+  }
+  get y() {
+    return this.state.y;
+  }
+}
 
 export class Velocity extends ECS.Component<{
   vx: number;
   vy: number;
 }> {}
 
-export class Color<T> extends ECS.Component<T> {}
-
-export class RedColor extends Color<"red"> {
-  constructor() {
-    super("red");
-  }
-}
-export class GreenColor extends Color<"blue"> {
-  constructor() {
-    super("blue");
-  }
-}
-export class YellowColor extends Color<"yellow"> {
-  constructor() {
-    super("yellow");
-  }
-}
+export class Color<T = string> extends ECS.Component<T> {}
