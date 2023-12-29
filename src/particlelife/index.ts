@@ -1,6 +1,7 @@
 import * as PIXI from "pixi.js";
 import * as ECS from "../ecs";
 import * as components from "./components";
+import { Circle } from "@timohausmann/quadtree-ts";
 
 export function setupInitialEntities<T extends components.Color<unknown>>(
   container: PIXI.Container,
@@ -14,18 +15,23 @@ export function setupInitialEntities<T extends components.Color<unknown>>(
       const color = colorConstructor();
       graphics.beginFill(color.state as string);
       graphics.drawCircle(0, 0, 1);
-      world.spawn(
-        new components.Position({
+
+      const position = new components.Position(
+        new Circle({
           x: Math.random() * bounds.width,
           y: Math.random() * bounds.height,
-        }),
-        new components.Velocity({
-          vx: 0,
-          vy: 0,
-        }),
+          r: 1,
+        })
+      );
+
+      const id = world.spawn(
+        position,
         color,
+        new components.Velocity({ vx: 0, vy: 0 }),
         new components.Graphics(graphics, container)
       );
+
+      position.state.data = id;
     }
   };
 }

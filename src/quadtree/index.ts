@@ -24,11 +24,16 @@ export class Quadtree<T extends Entity> {
   nodes: [Quadtree<T>, Quadtree<T>, Quadtree<T>, Quadtree<T>] | null;
   entities: T[] = [];
 
-  constructor(readonly bounds: Bounds, readonly maxN = 5) {}
+  constructor(
+    readonly bounds: Bounds,
+    readonly level = 0,
+    readonly maxN = 5,
+    readonly maxLevel = 8
+  ) {}
 
   insert(entity: T) {
     if (!this.nodes?.length) {
-      if (this.entities.length < this.maxN) {
+      if (this.entities.length < this.maxN || this.level >= this.maxLevel) {
         this.entities.push(entity);
         return;
       }
@@ -72,10 +77,30 @@ export class Quadtree<T extends Entity> {
     const hw = this.bounds.width / 2;
     const hh = this.bounds.height / 2;
     this.nodes = [
-      new Quadtree(rect(x + hw, y, hw, hh), this.maxN),
-      new Quadtree(rect(x, y, hw, hh), this.maxN),
-      new Quadtree(rect(x, y + hh, hw, hh), this.maxN),
-      new Quadtree(rect(x + hw, y + hh, hw, hh), this.maxN),
+      new Quadtree(
+        rect(x + hw, y, hw, hh),
+        this.level + 1,
+        this.maxN,
+        this.maxLevel
+      ),
+      new Quadtree(
+        rect(x, y, hw, hh),
+        this.level + 1,
+        this.maxN,
+        this.maxLevel
+      ),
+      new Quadtree(
+        rect(x, y + hh, hw, hh),
+        this.level + 1,
+        this.maxN,
+        this.maxLevel
+      ),
+      new Quadtree(
+        rect(x + hw, y + hh, hw, hh),
+        this.level + 1,
+        this.maxN,
+        this.maxLevel
+      ),
     ];
     for (const p of this.entities) {
       this.insert(p);

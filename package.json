@@ -8,6 +8,7 @@
     "build": "parcel build --public-url ./"
   },
   "devDependencies": {
+    "@timohausmann/quadtree-ts": "^2.2.2",
     "parcel": "^2.10.3"
   },
   "dependencies": {

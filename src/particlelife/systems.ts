@@ -1,7 +1,8 @@
 import { Rectangle } from "pixi.js";
 import * as ECS from "../ecs";
 import * as components from "./components";
-import { Quadtree } from "../quadtree";
+// import { Quadtree } from "../quadtree";
+import { Circle, Quadtree } from "@timohausmann/quadtree-ts";
 
 export class GraphicsSystem extends ECS.System {
   queries = {
@@ -22,12 +23,14 @@ export class MovementSystem extends ECS.System {
   };
   constructor(
     readonly bounds: Rectangle,
-    readonly quadtree?: Quadtree<components.Position>
+    readonly quadtree?: Quadtree<Circle<ECS.Entity>>
   ) {
     super();
   }
 
   update(world: ECS.World) {
+    this.quadtree?.clear();
+
     for (const [_, [p, v]] of this.queries.Particles.execute(world)) {
       let nx = p.state.x + v.state.vx;
       let ny = p.state.y + v.state.vy;
@@ -44,10 +47,9 @@ export class MovementSystem extends ECS.System {
         ny = this.bounds.top;
       }
 
-      this.quadtree?.remove(p);
       p.state.x = nx;
       p.state.y = ny;
-      this.quadtree?.insert(p);
+      this.quadtree?.insert(p.state);
     }
   }
 }
@@ -63,7 +65,7 @@ export class ParticleLifeSystem extends ECS.System {
 
   constructor(
     readonly simulationMultiplier: number = 100,
-    readonly quadtree?: Quadtree<components.Position>
+    readonly quadtree?: Quadtree<Circle<ECS.Entity>>
   ) {
     super();
   }
@@ -106,7 +108,11 @@ export class ParticleLifeSystem extends ECS.System {
 
     const accel = (this.simulationMultiplier * elapsed) / 1000;
 
-    for (const [_, particle] of particles) {
+    if (!this.quadtree) {
+      particles.sort(([_a, [a]], [_b, [b]]) => a.state.x - b.state.x);
+    }
+
+    for (const [i, [_, particle]] of particles.entries()) {
       let neighbors: [
         components.Position,
         components.Velocity,
@@ -114,9 +120,24 @@ export class ParticleLifeSystem extends ECS.System {
       ][] = [];
       if (this.quadtree) {
         neighbors = this.quadtree
-          .find(new Rectangle(particle[0].x - 40, particle[0].y - 40, 80, 80))
-          .map((bv) => bv.id)
-          .map((entity) => this.queries.Particle.components(world, entity));
+          .retrieve(
+            new Circle<ECS.Entity>({
+              x: particle[0].state.x,
+              y: particle[0].state.y,
+              r: 80,
+            })
+          )
+          .map((c) => this.queries.Particle.components(world, c.data!));
+        // .find(
+        //   new Rectangle(
+        //     particle[0].state.x - 40,
+        //     particle[0].state.y - 40,
+        //     80,
+        //     80
+        //   )
+        // )
+        // .map((bv) => bv.id)
+        // .map((entity) => this.queries.Particle.components(world, entity));
       } else {
         neighbors = particles
           .map(([_, particle]) => particle)

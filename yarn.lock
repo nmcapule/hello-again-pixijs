@@ -1072,6 +1072,11 @@
   resolved "https://registry.yarnpkg.com/@swc/types/-/types-0.1.5.tgz#043b731d4f56a79b4897a3de1af35e75d56bc63a"
   integrity sha512-myfUej5naTBWnqOCc/MdVOLVjXUXtIA+NpDrDBKJtLLg2shUjBu3cZmB/85RyitKc55+lUUyl7oRfLOvkr2hsw==
 
+"@timohausmann/quadtree-ts@^2.2.2":
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/@timohausmann/quadtree-ts/-/quadtree-ts-2.2.2.tgz#da3114145a48f0a8bab4910a2e3096575dc56d23"
+  integrity sha512-emYbmmbTb+S3F75yvt03KQ3pMO3v/4BzjbAVnflbYq3zJfcurTfZHeriK8o7T0lFzBz3kBw2Pn41vlK3pD8spw==
+
 "@trysound/sax@0.2.0":
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/@trysound/sax/-/sax-0.2.0.tgz#cccaab758af56761eb7bf37af6f03f326dd798ad"

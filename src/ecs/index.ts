@@ -112,6 +112,9 @@ export class World {
   private markForReindex = new Set<Entity>();
 
   components(entity): Map<string, Component> {
+    if (!entity) {
+      throw new Error("getting component for null entity");
+    }
     return this.entityComponents.get(entity)!;
   }
   execute(query: Query<any, any>): Set<Entity> {
