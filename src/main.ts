@@ -1,14 +1,18 @@
 import * as PIXI from "pixi.js";
 import * as ECS from "./ecs";
-// import * as spawner from "./spawner";
 import * as particlelife from "./particlelife";
 
-const bounds = new PIXI.Rectangle(0, 0, 800, 600);
+const bounds = new PIXI.Rectangle(
+  0,
+  0,
+  document.body.clientWidth,
+  document.body.clientHeight
+);
 
 const app = new PIXI.Application({
   background: "#000",
-  width: 800,
-  height: 600,
+  width: bounds.width,
+  height: bounds.height,
 });
 
 new ECS.World()

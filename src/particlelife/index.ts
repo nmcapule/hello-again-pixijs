@@ -16,7 +16,7 @@ export function setupInitialEntities<
 
       const graphics = new PIXI.Graphics();
       graphics.beginFill(colorEntity.state as string);
-      graphics.drawCircle(0, 0, 2);
+      graphics.drawCircle(0, 0, 1);
       world.spawn(
         new components.Position({
           x: Math.random() * bounds.width,
