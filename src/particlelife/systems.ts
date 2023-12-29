@@ -18,7 +18,7 @@ export class QuadtreeRendererSystem extends ECS.System {
 
   update() {
     this.graphics.clear();
-    this.graphics.lineStyle(1, 0xffffff);
+    this.graphics.lineStyle(1, 0xffffff, 0.15);
 
     const queue = [this.quadtree];
     while (queue.length > 0) {
@@ -55,17 +55,18 @@ export class MovementSystem extends ECS.System {
   };
   constructor(
     readonly bounds: Rectangle,
-    readonly quadtree?: Quadtree<components.Position>
+    readonly quadtree?: Quadtree<components.Position>,
+    readonly stepSize = 1
   ) {
     super();
   }
 
-  update(world: ECS.World) {
+  update(world: ECS.World, elapsed: number) {
     this.quadtree?.clear();
 
     for (const [_, [p, v]] of this.queries.Particles.execute(world)) {
-      let nx = p.state.x + v.state.vx;
-      let ny = p.state.y + v.state.vy;
+      let nx = p.state.x + (v.state.vx * this.stepSize * elapsed) / 1000;
+      let ny = p.state.y + (v.state.vy * this.stepSize * elapsed) / 1000;
       if (nx < this.bounds.left) {
         nx = this.bounds.right;
       }
@@ -99,7 +100,7 @@ export class ParticleLifeSystem extends ECS.System {
     readonly rules: [string, string, number][],
     readonly quadtree?: Quadtree<components.Position>,
     readonly searchSize = 30,
-    readonly stepSize: number = 1
+    readonly multiplier: number = 1
   ) {
     super();
   }
@@ -140,7 +141,7 @@ export class ParticleLifeSystem extends ECS.System {
   update(world: ECS.World, elapsed: number) {
     const particles = this.queries.Particle.execute(world);
 
-    const accel = this.stepSize; //* elapsed / 1000;
+    const accel = this.multiplier; //* elapsed / 1000;
 
     if (!this.quadtree) {
       particles.sort(([_a, [a]], [_b, [b]]) => a.state.x - b.state.x);

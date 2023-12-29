@@ -30,7 +30,7 @@ let quadtree = new Quadtree<particlelife.Position>(bounds);
 const colors = ["green", "red", "yellow", "white"];
 const n = 500;
 const searchSize = 80;
-const stepSize = 100;
+const stepSize = 60;
 const rules = colors
   .map((color) =>
     colors.map(
@@ -46,10 +46,8 @@ for (const color of colors) {
 }
 world
   .register(new particlelife.GraphicsSystem())
-  .register(
-    new particlelife.ParticleLifeSystem(rules, quadtree, searchSize, stepSize)
-  )
-  .register(new particlelife.MovementSystem(bounds, quadtree))
+  .register(new particlelife.ParticleLifeSystem(rules, quadtree, searchSize))
+  .register(new particlelife.MovementSystem(bounds, quadtree, stepSize))
   .register(new particlelife.QuadtreeRendererSystem(app.stage, quadtree))
   .run();
 
