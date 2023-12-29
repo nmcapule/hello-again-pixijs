@@ -1,20 +1,44 @@
 import * as PIXI from "pixi.js";
 import * as ECS from "./ecs";
-import * as spawner from "./spawner";
+// import * as spawner from "./spawner";
+import * as particlelife from "./particlelife";
+
+const bounds = new PIXI.Rectangle(0, 0, 800, 600);
 
 const app = new PIXI.Application({
-  background: "#1099bb",
+  background: "#000",
   width: 800,
-  height: 640,
+  height: 600,
 });
 
 new ECS.World()
-  .once(spawner.setupInitialEntities(app.stage, 100))
-  .register(new spawner.SporadicMovementSystem())
-  .register(new spawner.SpawnSystem(app.stage, 10000))
-  // .register(new spawner.SpawnDespawnSystem(app.stage, 10))
-  .register(new spawner.CollisionDetectSystem(4))
-  .register(new spawner.EventLoggerSystem())
+  .once(
+    particlelife.setupInitialEntities(
+      app.stage,
+      bounds,
+      particlelife.GreenColor,
+      500
+    )
+  )
+  .once(
+    particlelife.setupInitialEntities(
+      app.stage,
+      bounds,
+      particlelife.RedColor,
+      500
+    )
+  )
+  .once(
+    particlelife.setupInitialEntities(
+      app.stage,
+      bounds,
+      particlelife.YellowColor,
+      500
+    )
+  )
+  .register(new particlelife.GraphicsSystem())
+  .register(new particlelife.ParticleLifeSystem())
+  .register(new particlelife.MovementSystem(bounds))
   .run();
 
 document.body.appendChild(app.view as any);

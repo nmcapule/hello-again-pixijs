@@ -22,13 +22,16 @@ export class Query<
   const T extends ComponentConstructor[] = ComponentConstructor[],
   const C = { [Index in keyof T]: InstanceType<T[Index]> }
 > {
-  constructor(readonly selectors: T) {}
+  constructor(
+    readonly selectors: T,
+    readonly filter?: (components: Map<string, Component>) => boolean
+  ) {}
 
   components(world: World, entity: Entity): C {
     const components = world.components(entity);
     const values = this.selectors
       .map((selector) => selector.name)
-      .map((name, _) => components.get(name)!);
+      .map((name) => components.get(name)!);
     return values as unknown as C;
   }
 
@@ -47,8 +50,18 @@ export class Query<
     return world.execute(this).values().next().value;
   }
 
-  matches(names: Set<string>) {
-    return this.selectors.every((component) => names.has(component.name));
+  matches(components: Map<string, Component>) {
+    // Needs to have all the components.
+    if (!this.selectors.every((selector) => components.has(selector.name))) {
+      return false;
+    }
+    // Needs to match filter, if it exist.
+    if (this.filter) {
+      if (!this.filter(components)) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 
@@ -71,10 +84,6 @@ export class SystemEventListener<
 
   events(world: World): C {
     return world.events(this as unknown as SystemEventListener) as C;
-  }
-
-  matches(names: Set<string>) {
-    return this.selectors.every((event) => names.has(event.name));
   }
 }
 
@@ -157,9 +166,9 @@ export class World {
   }
 
   private reindex(entity: Entity) {
-    const componentNames = new Set(this.components(entity).keys());
+    const components = this.components(entity);
     for (const [query, cached] of this.cachedQueryEntities) {
-      const match = query.matches(componentNames);
+      const match = query.matches(components);
       if (match) {
         cached.add(entity);
       } else {

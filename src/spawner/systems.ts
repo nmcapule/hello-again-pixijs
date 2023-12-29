@@ -6,7 +6,9 @@ import * as events from "./events";
 const Spatial = new ECS.Query([components.Position, components.Graphics]);
 
 export class SporadicMovementSystem extends ECS.System {
-  queries = { Spatial };
+  queries = {
+    Spatial: new ECS.Query([components.Position, components.Graphics]),
+  };
 
   update(world: ECS.World, elapsed: number) {
     const query = this.queries.Spatial;
@@ -24,11 +26,13 @@ export class SporadicMovementSystem extends ECS.System {
 
 export class SpawnSystem extends ECS.System {
   queries = {
-    SpatialAndNamed: new ECS.Query([
-      components.Position,
-      components.Graphics,
-      components.Named,
-    ]),
+    SpatialAndNamed: new ECS.Query(
+      [components.Position, components.Graphics, components.Named],
+      (lookup) => {
+        const name = lookup.get(components.Named.name) as components.Named;
+        return ["instance#1", "instance#2"].includes(name.state);
+      }
+    ),
   };
 
   constructor(
@@ -66,57 +70,6 @@ export class SpawnSystem extends ECS.System {
     }
   }
 }
-
-// export class SpawnDespawnSystem extends ECS.System {
-//   queries = {
-//     SpatialAndNamed: new ECS.Query([
-//       components.Position,
-//       components.Graphics,
-//       components.Named,
-//     ]),
-//   };
-
-//   constructor(
-//     readonly stage: PIXI.Container,
-//     readonly targetPopulation = 1000
-//   ) {
-//     super();
-//   }
-
-//   update(world: ECS.World, elapsed: number) {
-//     const matches = this.queries.SpatialAndNamed.execute(world);
-//     if (matches.length === 0) {
-//       return;
-//     }
-
-//     const control = Math.max(elapsed, 100);
-
-//     // Calculate percentage of cloning!
-//     const numberToClone =
-//       (Math.random() * control * this.targetPopulation) / matches.length;
-//     // Sample entities.
-//     for (let i = 1; i < numberToClone; i++) {
-//       const index = Math.floor(Math.random() * matches.length);
-//       const [_, [position, graphics, name]] = matches[index];
-//       const clonedGraphics = graphics.state.clone();
-//       world.spawn(
-//         new components.Position({ ...position.state }),
-//         new components.Graphics(clonedGraphics, this.stage),
-//         new components.Named(name.state)
-//       );
-//       this.stage.addChild(clonedGraphics);
-//     }
-
-//     // Calculate percentage of despawning!
-//     const numberToDespawn =
-//       (Math.random() * control * matches.length) / this.targetPopulation;
-//     for (let i = 1; i < numberToDespawn; i++) {
-//       const index = Math.floor(Math.random() * matches.length);
-//       const [entity] = matches[index];
-//       world.despawn(entity);
-//     }
-//   }
-// }
 
 export class CollisionDetectSystem extends ECS.System {
   queries = {
