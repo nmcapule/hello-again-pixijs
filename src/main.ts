@@ -17,17 +17,6 @@ const app = new PIXI.Application({
   height: bounds.height,
 });
 
-// const quadtree = new Quadtree(bounds);
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// quadtree.insert({ x: 1, y: 2, id: 1 });
-// console.log(quadtree.entities);
-
 function particles(color: string, n: number) {
   return particlelife.setupInitialEntities(
     app.stage,
@@ -39,12 +28,12 @@ function particles(color: string, n: number) {
 
 const quadtree = new Quadtree<particlelife.Position>(bounds);
 new ECS.World()
-  .once(particles("green", 100))
-  .once(particles("red", 100))
-  .once(particles("yellow", 100))
+  .once(particles("green", 500))
+  .once(particles("red", 500))
+  .once(particles("yellow", 500))
   .register(new particlelife.GraphicsSystem())
-  .register(new particlelife.ParticleLifeSystem(quadtree, 100))
-  .register(new particlelife.MovementSystem(bounds, quadtree))
+  .register(new particlelife.ParticleLifeSystem(100))
+  .register(new particlelife.MovementSystem(bounds))
   .run();
 
 document.body.appendChild(app.view as any);

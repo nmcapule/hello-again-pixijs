@@ -22,7 +22,7 @@ export class MovementSystem extends ECS.System {
   };
   constructor(
     readonly bounds: Rectangle,
-    readonly quadtree: Quadtree<components.Position>
+    readonly quadtree?: Quadtree<components.Position>
   ) {
     super();
   }
@@ -44,10 +44,10 @@ export class MovementSystem extends ECS.System {
         ny = this.bounds.top;
       }
 
-      this.quadtree.remove(p);
+      this.quadtree?.remove(p);
       p.state.x = nx;
       p.state.y = ny;
-      this.quadtree.insert(p);
+      this.quadtree?.insert(p);
     }
   }
 }
@@ -59,35 +59,17 @@ export class ParticleLifeSystem extends ECS.System {
       components.Velocity,
       components.Color<string>,
     ]),
-    // Red: new ECS.Query([
-    //   components.Position,
-    //   components.Velocity,
-    //   components.RedColor,
-    // ]),
-    // Green: new ECS.Query([
-    //   components.Position,
-    //   components.Velocity,
-    //   components.GreenColor,
-    // ]),
-    // Yellow: new ECS.Query([
-    //   components.Position,
-    //   components.Velocity,
-    //   components.YellowColor,
-    // ]),
   };
 
   constructor(
-    readonly quadtree: Quadtree<components.Position>,
-    readonly simulationMultiplier: number = 100
+    readonly simulationMultiplier: number = 100,
+    readonly quadtree?: Quadtree<components.Position>
   ) {
     super();
   }
 
   private rule(
-    [_, [ap, av, ac]]: [
-      ECS.Entity,
-      [components.Position, components.Velocity, components.Color]
-    ],
+    [ap, av, ac]: [components.Position, components.Velocity, components.Color],
     bb: [components.Position, components.Velocity, components.Color][],
     fac: string,
     fbc: string,
@@ -100,7 +82,7 @@ export class ParticleLifeSystem extends ECS.System {
     let fx = 0;
     let fy = 0;
 
-    for (const [bp, bv, bc] of bb) {
+    for (const [bp, _bv, bc] of bb) {
       if (bc.state !== fbc) {
         continue;
       }
@@ -121,14 +103,29 @@ export class ParticleLifeSystem extends ECS.System {
 
   update(world: ECS.World, elapsed: number) {
     const particles = this.queries.Particle.execute(world);
+
     const accel = (this.simulationMultiplier * elapsed) / 1000;
-    for (const particle of particles) {
-      const neighbors = this.quadtree
-        .find(
-          new Rectangle(particle[1][0].x - 40, particle[1][0].y - 40, 80, 80)
-        )
-        .map((bv) => bv.id)
-        .map((entity) => this.queries.Particle.components(world, entity));
+
+    for (const [_, particle] of particles) {
+      let neighbors: [
+        components.Position,
+        components.Velocity,
+        components.Color
+      ][] = [];
+      if (this.quadtree) {
+        neighbors = this.quadtree
+          .find(new Rectangle(particle[0].x - 40, particle[0].y - 40, 80, 80))
+          .map((bv) => bv.id)
+          .map((entity) => this.queries.Particle.components(world, entity));
+      } else {
+        neighbors = particles
+          .map(([_, particle]) => particle)
+          .filter(
+            ([pos]) =>
+              Math.abs(pos.state.x - particle[0].state.x) <= 80 &&
+              Math.abs(pos.state.y - particle[0].state.y) <= 80
+          );
+      }
 
       this.rule(particle, neighbors, "green", "green", -0.32 * accel);
       this.rule(particle, neighbors, "green", "red", -0.17 * accel);
