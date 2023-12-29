@@ -10,17 +10,17 @@ export class Graphics extends ECS.Component<PIXI.Graphics> {
   done = () => this.state.removeFromParent();
 }
 
-// export class Position extends ECS.Component<{
-//   x: number;
-//   y: number;
-// }> {
-//   get x() {
-//     return this.state.x;
-//   }
-//   get y() {
-//     return this.state.y;
-//   }
-// }
+export class Position extends ECS.Component<{
+  x: number;
+  y: number;
+}> {
+  get x() {
+    return this.state.x;
+  }
+  get y() {
+    return this.state.y;
+  }
+}
 
 export class Velocity extends ECS.Component<{
   vx: number;
@@ -28,6 +28,3 @@ export class Velocity extends ECS.Component<{
 }> {}
 
 export class Color<T = string> extends ECS.Component<T> {}
-
-// This is just for quadtree support, not ECS.
-export class Position extends ECS.Component<Circle<ECS.Entity>> {}

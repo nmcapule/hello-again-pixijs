@@ -1,8 +1,7 @@
 import { Rectangle } from "pixi.js";
 import * as ECS from "../ecs";
 import * as components from "./components";
-// import { Quadtree } from "../quadtree";
-import { Circle, Quadtree } from "@timohausmann/quadtree-ts";
+import { Quadtree } from "../quadtree";
 
 export class GraphicsSystem extends ECS.System {
   queries = {
@@ -23,7 +22,7 @@ export class MovementSystem extends ECS.System {
   };
   constructor(
     readonly bounds: Rectangle,
-    readonly quadtree?: Quadtree<Circle<ECS.Entity>>
+    readonly quadtree?: Quadtree<components.Position>
   ) {
     super();
   }
@@ -49,7 +48,7 @@ export class MovementSystem extends ECS.System {
 
       p.state.x = nx;
       p.state.y = ny;
-      this.quadtree?.insert(p.state);
+      this.quadtree?.insert(p);
     }
   }
 }
@@ -64,13 +63,15 @@ export class ParticleLifeSystem extends ECS.System {
   };
 
   constructor(
-    readonly simulationMultiplier: number = 100,
-    readonly quadtree?: Quadtree<Circle<ECS.Entity>>
+    readonly rules: [string, string, number][],
+    readonly quadtree?: Quadtree<components.Position>,
+    readonly searchSize = 30,
+    readonly simulationMultiplier: number = 1
   ) {
     super();
   }
 
-  private rule(
+  private applyRule(
     [ap, av, ac]: [components.Position, components.Velocity, components.Color],
     bb: [components.Position, components.Velocity, components.Color][],
     fac: string,
@@ -92,7 +93,7 @@ export class ParticleLifeSystem extends ECS.System {
       const dx = ap.state.x - bp.state.x;
       const dy = ap.state.y - bp.state.y;
       const d = Math.sqrt(dx * dx + dy * dy);
-      if (d > 0 && d < 80) {
+      if (d > 0 && d < this.searchSize) {
         const F = (g * 1) / d;
         fx += F * dx;
         fy += F * dy;
@@ -106,7 +107,7 @@ export class ParticleLifeSystem extends ECS.System {
   update(world: ECS.World, elapsed: number) {
     const particles = this.queries.Particle.execute(world);
 
-    const accel = (this.simulationMultiplier * elapsed) / 1000;
+    const accel = this.simulationMultiplier; //* elapsed / 1000;
 
     if (!this.quadtree) {
       particles.sort(([_a, [a]], [_b, [b]]) => a.state.x - b.state.x);
@@ -121,23 +122,16 @@ export class ParticleLifeSystem extends ECS.System {
       if (this.quadtree) {
         neighbors = this.quadtree
           .retrieve(
-            new Circle<ECS.Entity>({
-              x: particle[0].state.x,
-              y: particle[0].state.y,
-              r: 80,
-            })
+            new Rectangle(
+              particle[0].state.x - this.searchSize,
+              particle[0].state.y - this.searchSize,
+              this.searchSize * 2,
+              this.searchSize * 2
+            )
           )
-          .map((c) => this.queries.Particle.components(world, c.data!));
-        // .find(
-        //   new Rectangle(
-        //     particle[0].state.x - 40,
-        //     particle[0].state.y - 40,
-        //     80,
-        //     80
-        //   )
-        // )
-        // .map((bv) => bv.id)
-        // .map((entity) => this.queries.Particle.components(world, entity));
+          .map((component) =>
+            this.queries.Particle.components(world, component.id)
+          );
       } else {
         neighbors = particles
           .map(([_, particle]) => particle)
@@ -148,13 +142,9 @@ export class ParticleLifeSystem extends ECS.System {
           );
       }
 
-      this.rule(particle, neighbors, "green", "green", -0.32 * accel);
-      this.rule(particle, neighbors, "green", "red", -0.17 * accel);
-      this.rule(particle, neighbors, "green", "yellow", 0.34 * accel);
-      this.rule(particle, neighbors, "red", "red", -0.1 * accel);
-      this.rule(particle, neighbors, "red", "green", -0.34 * accel);
-      this.rule(particle, neighbors, "yellow", "yellow", 0.15 * accel);
-      this.rule(particle, neighbors, "yellow", "green", -0.2 * accel);
+      for (const [a, b, g] of this.rules) {
+        this.applyRule(particle, neighbors, a, b, g);
+      }
     }
   }
 }

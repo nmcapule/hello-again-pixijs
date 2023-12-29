@@ -31,6 +31,11 @@ export class Quadtree<T extends Entity> {
     readonly maxLevel = 8
   ) {}
 
+  clear() {
+    this.nodes = null;
+    this.entities = [];
+  }
+
   insert(entity: T) {
     if (!this.nodes?.length) {
       if (this.entities.length < this.maxN || this.level >= this.maxLevel) {
@@ -62,13 +67,13 @@ export class Quadtree<T extends Entity> {
     }
   }
 
-  find(bounds: Bounds): T[] {
+  retrieve(bounds: Bounds): T[] {
     if (!this.nodes) {
       return this.entities.filter((e) => bounds.contains(e.x, e.y));
     }
     return this.nodes
       .filter((node) => bounds.intersects(node.bounds))
-      .reduce((prev, node) => prev.concat(node.find(bounds)), [] as T[]);
+      .reduce((prev, node) => prev.concat(node.retrieve(bounds)), [] as T[]);
   }
 
   private subdivide() {
