@@ -26,9 +26,9 @@ export class Quadtree<T extends Entity> {
 
   constructor(
     readonly bounds: Bounds,
-    readonly level = 0,
-    readonly maxN = 5,
-    readonly maxLevel = 8
+    readonly maxN = 10,
+    readonly maxLevel = 10,
+    readonly level = 0
   ) {}
 
   clear() {
@@ -84,27 +84,27 @@ export class Quadtree<T extends Entity> {
     this.nodes = [
       new Quadtree(
         rect(x + hw, y, hw, hh),
-        this.level + 1,
         this.maxN,
-        this.maxLevel
+        this.maxLevel,
+        this.level + 1
       ),
       new Quadtree(
         rect(x, y, hw, hh),
-        this.level + 1,
         this.maxN,
-        this.maxLevel
+        this.maxLevel,
+        this.level + 1
       ),
       new Quadtree(
         rect(x, y + hh, hw, hh),
-        this.level + 1,
         this.maxN,
-        this.maxLevel
+        this.maxLevel,
+        this.level + 1
       ),
       new Quadtree(
         rect(x + hw, y + hh, hw, hh),
-        this.level + 1,
         this.maxN,
-        this.maxLevel
+        this.maxLevel,
+        this.level + 1
       ),
     ];
     for (const p of this.entities) {

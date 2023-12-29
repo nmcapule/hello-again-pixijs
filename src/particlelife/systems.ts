@@ -1,7 +1,40 @@
-import { Rectangle } from "pixi.js";
+import { Container, Graphics, Rectangle } from "pixi.js";
 import * as ECS from "../ecs";
 import * as components from "./components";
 import { Quadtree } from "../quadtree";
+
+export class QuadtreeRendererSystem extends ECS.System {
+  graphics: Graphics;
+
+  constructor(
+    readonly stage: Container,
+    readonly quadtree: Quadtree<components.Position>
+  ) {
+    super();
+
+    this.graphics = new Graphics();
+    this.stage.addChild(this.graphics);
+  }
+
+  update() {
+    this.graphics.clear();
+    this.graphics.lineStyle(1, 0xffffff);
+
+    const queue = [this.quadtree];
+    while (queue.length > 0) {
+      const qt = queue.pop()!;
+      this.graphics.drawRect(
+        qt?.bounds.x,
+        qt?.bounds.y,
+        qt?.bounds.width,
+        qt?.bounds.height
+      );
+      if (qt.nodes) {
+        queue.push(...qt.nodes);
+      }
+    }
+  }
+}
 
 export class GraphicsSystem extends ECS.System {
   queries = {
@@ -66,7 +99,7 @@ export class ParticleLifeSystem extends ECS.System {
     readonly rules: [string, string, number][],
     readonly quadtree?: Quadtree<components.Position>,
     readonly searchSize = 30,
-    readonly simulationMultiplier: number = 1
+    readonly stepSize: number = 1
   ) {
     super();
   }
@@ -107,7 +140,7 @@ export class ParticleLifeSystem extends ECS.System {
   update(world: ECS.World, elapsed: number) {
     const particles = this.queries.Particle.execute(world);
 
-    const accel = this.simulationMultiplier; //* elapsed / 1000;
+    const accel = this.stepSize; //* elapsed / 1000;
 
     if (!this.quadtree) {
       particles.sort(([_a, [a]], [_b, [b]]) => a.state.x - b.state.x);
