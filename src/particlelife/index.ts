@@ -8,7 +8,7 @@ export function setupInitialEntities<T extends components.Color<unknown>>(
   colorConstructor: () => T,
   n = 200
 ) {
-  return (world: ECS.World) => {
+  return (commands: ECS.Commands) => {
     for (let i = 0; i < n; i++) {
       const graphics = new PIXI.Graphics();
       const color = colorConstructor();
@@ -20,7 +20,7 @@ export function setupInitialEntities<T extends components.Color<unknown>>(
         y: Math.random() * bounds.height,
       });
 
-      world.spawn(
+      commands.spawn(
         position,
         color,
         new components.Velocity({ vx: 0, vy: 0 }),

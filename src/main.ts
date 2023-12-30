@@ -27,10 +27,10 @@ function particles(color: string, n: number) {
 
 let quadtree = new Quadtree<particlelife.Position>(bounds);
 
-const colors = ["green", "red", "yellow", "white"];
+const colors = ["green", "red", "yellow", "#ffffff"];
 const n = 500;
 const searchSize = 80;
-const stepSize = 60;
+const stepSize = 1;
 const rules = colors
   .map((color) =>
     colors.map(

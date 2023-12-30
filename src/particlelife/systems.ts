@@ -40,8 +40,8 @@ export class GraphicsSystem extends ECS.System {
   queries = {
     Drawable: new ECS.Query([components.Position, components.Graphics]),
   };
-  update(world: ECS.World) {
-    const entities = this.queries.Drawable.execute(world);
+  update(commands: ECS.Commands) {
+    const entities = commands.queryWith(this.queries.Drawable);
     for (const [_, [p, g]] of entities) {
       g.state.x = p.state.x;
       g.state.y = p.state.y;
@@ -61,12 +61,14 @@ export class MovementSystem extends ECS.System {
     super();
   }
 
-  update(world: ECS.World, elapsed: number) {
+  update(commands: ECS.Commands, elapsed: number) {
     this.quadtree?.clear();
 
-    for (const [_, [p, v]] of this.queries.Particles.execute(world)) {
-      let nx = p.state.x + (v.state.vx * this.stepSize * elapsed) / 1000;
-      let ny = p.state.y + (v.state.vy * this.stepSize * elapsed) / 1000;
+    const step = (this.stepSize * elapsed) / (1000 / 60);
+
+    for (const [_, [p, v]] of commands.queryWith(this.queries.Particles)) {
+      let nx = p.state.x + v.state.vx * step;
+      let ny = p.state.y + v.state.vy * step;
       if (nx < this.bounds.left) {
         nx = this.bounds.right;
       }
@@ -138,8 +140,8 @@ export class ParticleLifeSystem extends ECS.System {
     av.state.vy = (av.state.vy + fy) * 0.5;
   }
 
-  update(world: ECS.World, elapsed: number) {
-    const particles = this.queries.Particle.execute(world);
+  update(commands: ECS.Commands, elapsed: number) {
+    const particles = commands.queryWith(this.queries.Particle);
 
     const accel = this.multiplier; //* elapsed / 1000;
 
@@ -164,7 +166,7 @@ export class ParticleLifeSystem extends ECS.System {
             )
           )
           .map((component) =>
-            this.queries.Particle.components(world, component.id)
+            commands.select(component.id, this.queries.Particle.selectors)
           );
       } else {
         neighbors = particles
